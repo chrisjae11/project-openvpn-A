@@ -1,0 +1,18 @@
+---
+clis:
+  - name: source1
+    src: "http://s3.amazonaws.com/ec2metadata/ec2-metadata"
+    dst: "./"
+  - name: source2
+    src: "https://github.com/barnybug/cli53/releases/download/0.8.7/cli53-linux-amd64"
+    dst: /usr/local/bin/cli53
+
+domain: "logicflux.tech"
+openvpn_docker_image: "kylemanna/openvpn"
+openvpn_data_volume: "/ovpn-data"
+openvpn_pki_pass: redhat
+openvpn_clients:
+  - client1
+  - client2
+public_domain: vpn.logicflux.tech
+user: chris

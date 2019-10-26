@@ -1,0 +1,41 @@
+---
+- hosts: all
+  become: true
+  remote_user: ubuntu
+  vars_files:
+    - vars/main.yml
+  tasks:
+    - name: update
+      apt: name="*" state=latest update_cache=yes
+    - name: Install aptitude using apt
+      apt: name=aptitude state=latest update_cache=yes force_apt_get=yes
+    - name: Install required system packages
+      apt: name={{ item }} state=latest update_cache=yes
+      loop: [ 'apt-transport-https', 'ca-certificates', 'curl', 'jq', 'nfs-common', 'git', 'python-pip', 'python3-pip', 'virtualenv', 'python3-setuptools']
+    - name: Add Docker GPG apt Key
+      apt_key:
+        url: https://download.docker.com/linux/ubuntu/gpg
+        state: present
+    - name: Add Docker Repository
+      apt_repository:
+        repo: deb https://download.docker.com/linux/ubuntu bionic stable
+        state: present
+    - name: Update apt and install docker-ce
+      apt:  name=docker-ce state=latest update_cache=yes
+    - name: Install Docker Module for Python
+      pip: name="{{item}}" state=latest
+      loop: ['awscli', 'docker-py', 'pexpect']
+    - name: install clis
+      get_url: url="{{item.src}}" dest="{{item.dst}}"
+      loop: "{{clis}}"
+    - name: chmod clis
+      command: chmod +x "{{item}}"
+      loop:
+        - "ec2-metadata"
+        - "/usr/local/bin/cli53"
+    - name: Pull default Docker image
+      docker_image: name="{{ openvpn_docker_image }}" source=pull
+    # - name: service
+    #   service: name=docker state=started enabled=true
+    # - name: docker volme
+    #   docker_volume: name="{{openvpn_data_volume}}" state=present
