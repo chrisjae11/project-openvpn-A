@@ -26,7 +26,7 @@ data "template_file" "init" {
   template = "${file("scripts/init.sh")}"
 
   vars = {
-    efs_dns = "${aws_efs_mount_target.tg01.dns_name}"
+    efs_dns = "${aws_efs_mount_target.tg01.ip_address}"
   }
 }
 
@@ -42,7 +42,7 @@ data "template_file" "assign-ip" {
 
   vars = {
 
-    efs_dns = "${aws_efs_mount_target.tg01.dns_name}"
+    efs_dns = "${aws_efs_mount_target.tg01.ip_address}"
     instance_region = "${var.aws_region}",
     zone_id = "${aws_route53_zone.primary.zone_id}"
     sns_topic = "${local.sns_topic}"

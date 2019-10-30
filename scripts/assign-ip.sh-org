@@ -1,17 +1,15 @@
 #!/bin/bash
-# aws configure set region us-east-1
-export AWS_DEFAULT_REGION=us-east-1
+# aws configure set region ${instance_region}]
+export AWS_DEFAULT_REGION=${instance_region}
 export ZONE=${zone_id}
 export TTL="300"
+# export SNS_TOPIC=$(sns_topic)
 
 INSTANCE_ID=$(curl -s http://169.254.169.254/latest/meta-data/instance-id)
-ALLOCATION_ID=$(aws ec2 describe-addresses --region us-east-1 --filters "Name=tag:Name,Values=asg-pool" | jq -r '.Addresses[] | "\(.InstanceId) \(.AllocationId)"' | grep null | awk '{print $2}' | xargs shuf -n1 -e)
-
-echo AWS_DEFAULT_REGION >> /tmp/data
-echo $ALLOCATION_ID >> /tmp/data
+ALLOCATION_ID=$(aws ec2 describe-addresses --filters "Name=tag:Name,Values=asg-pool" | jq -r '.Addresses[] | "\(.InstanceId) \(.AllocationId)"' | grep null | awk '{print $2}' | xargs shuf -n1 -e)
 
 if [ ! -z $ALLOCATION_ID ]; then
-    # aws ec2 instance-status-ok --instance-ids $INSTANCE_ID && \
+    aws ec2 wait instance-running --instance-ids $INSTANCE_ID && \
     aws ec2 associate-address --instance-id $INSTANCE_ID --allocation-id $ALLOCATION_ID --allow-reassociation
 fi
 
@@ -26,26 +24,19 @@ PUBLIC_IP=$(ec2metadata | grep 'public-ipv4:' | cut -d ' ' -f 2 | head -n1 )
 
 cli53 rrcreate "$ZONE" "$PUBLIC_HOSTNAME $TTL A $PUBLIC_IP"
 
-export DATE=$RANDOM
-n=0
-until [ $n -ge 3 ]
-do
-  aws route53 create-health-check \
-    --caller-reference $DATE \
-    --health-check-config=IPAddress=$PUBLIC_IP,Type=TCP,Port=443 && break
-  n=$[$n+1]
-  sleep 3
-done
-
 RESOURCE_ID=$(aws route53 create-health-check \
-  --caller-reference $DATE \
+  --caller-reference $(date +'%Y%m%dT%H%M%d') \
   --health-check-config=IPAddress=$PUBLIC_IP,Type=TCP,Port=443 | grep -i id | cut -d ":" -f2 | sed 's/"/ /g' | sed 's/,/ /g')
-
-aws route53 change-tags-for-resource --resource-type healthcheck --resource-id $RESOURCE_ID --add-tags Key=openvpn,Value=node-$PUBLIC_IP
 
 echo $RESOURCE_ID > /tmp/data
 
+aws route53 change-tags-for-resource --resource-type healthcheck --resource-id $RESOURCE_ID --add-tags Key=openvpn,Value=node-$PUBLIC_IP
+
+echo $AWS_DEFAULT_REGION >> /tmp/data
+
 SNS_TOPIC=$( aws sns list-topics --region us-east-1 | jq -r '.Topics[]' | cut -d ':' -f2- | sed 's/"/ /g' | tr -d '{}' )
+
+echo $SNS_TOPIC >> /tmp/data
 
 aws cloudwatch put-metric-alarm \
     --alarm-name "vpn-node-alarm$PUBLIC_IP" \

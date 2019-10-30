@@ -14,5 +14,7 @@ openvpn_pki_pass: redhat
 openvpn_clients:
   - client1
   - client2
+  - client3
+  - client4
 public_domain: vpn.logicflux.tech
 user: chris

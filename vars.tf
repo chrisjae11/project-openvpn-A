@@ -61,7 +61,7 @@ variable "asg_min" {
   default = "1"
 }
 variable "asg_cap" {
-  default = "1"
+  default = "2"
 }
 variable "asg_grace" {
   default = "300"
